@@ -46,19 +46,24 @@ class Dataset():
                 count += 1
                 x = np.ndarray.tolist(listings_csv.values[listings_id + 1,:])
                 x.append(rev_id_reviews[listing_ids[listings_id]])
-                # import pdb; pdb.set_trace()
-                #l
                 writer.writerow(x)
 
         print(count)
                 
         new_file.close()
                 
-
-
-    
     def load_data(self):
-        pass
+        # load_file = open(self.args.combined_load_path)
+        # reader = csv.reader(load_file)
+        # for data in 
+        self.data = {}
+        file = pd.read_csv(self.args.combined_load_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
+        header = file.values[0]
+        file = file.values[1:] #skip the header
+        count = 0
+        for data in file:
+            self.data[count] = data
+        import pdb; pdb.set_trace()
 
 
     def split_dataset(self, norm):
@@ -69,8 +74,14 @@ if __name__ == "__main__":
         ap = ArgumentParser(description='The parameters for creating dataset.')
         ap.add_argument('--listings_path', type=str, default=r"C:\Users\harsi\cs 175\airbnb_data\listings.csv", help="The path defining location of listings dataset.")
         ap.add_argument('--reviews_path', type=str, default=r"C:\Users\harsi\cs 175\airbnb_data\reviews.csv", help="The path defining location of reviews dataset.")
-        ap.add_argument('--output_file', type=str, default="combined_data.csv", help="The path defining location of combined dataset.")
+        ap.add_argument('--output_file', type=str, default="combined_data.csv", help="The path defining location of combined dataset for storage.")
+        ap.add_argument('--combined_load_path', type=str, default="combined_data.csv", help="The path defining location of combined dataset for loading.")
+        ap.add_argument('--load_data', type=bool, default = False)
 
         args = ap.parse_args()
         dp = Dataset(args)
-        dp.extract_data()
+
+        if not args.load_data:
+            dp.extract_data()
+            
+        dp.load_data() #load either way
