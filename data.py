@@ -41,14 +41,18 @@ class Dataset():
         # write header the csv file
         writer.writerow(header)
         count = 0
+        review_counts = {}
         for listings_id in tqdm(range(len(listing_ids))):
             if listing_ids[listings_id] in rev_id_reviews:
                 count += 1
                 x = np.ndarray.tolist(listings_csv.values[listings_id + 1,:])
                 x.append(rev_id_reviews[listing_ids[listings_id]])
+                review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
                 writer.writerow(x)
 
         print(count)
+        print(review_counts)
+        import pdb; pdb.set_trace() #review_counts["5456"]
                 
         new_file.close()
                 
@@ -62,8 +66,12 @@ class Dataset():
         file = file.values[1:] #skip the header
         count = 0
         for data in file:
-            self.data[count] = data
-        import pdb; pdb.set_trace()
+            self.data[data[0]] = { header[i]:data[i] for i in range(1, len(header))}
+            count += 1
+        import pdb; pdb.set_trace() #len(self.data["5456"]["comments"])
+
+        #TODO: fix issue with number of comments in load_data being inflated after extraction
+        
 
 
     def split_dataset(self, norm):
