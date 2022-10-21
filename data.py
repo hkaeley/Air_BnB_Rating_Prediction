@@ -55,6 +55,33 @@ class Dataset():
         import pdb; pdb.set_trace() #review_counts["5456"]
                 
         new_file.close()
+
+    def do_everything(self):
+        listings_csv = pd.read_csv(self.listings_file_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
+        listing_ids = listings_csv.values[1:,0]
+        reviews_csv = pd.read_csv(self.review_file_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
+        reviews_ids = reviews_csv.values[1:,0]
+        rev_id_reviews = defaultdict(list)
+
+        for rev_id in tqdm(range(len(reviews_ids))):
+            rev_id_reviews[reviews_ids[rev_id]].append(str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", ''))
+            #differing amount of spaces between sentences within each review
+            #incorrect spelling
+        
+
+        header = [i for i in listings_csv.values[0]] + [reviews_csv.values[0][5]]
+
+        count = 0
+        review_counts = {}
+        self.data = {}
+        for listings_id in tqdm(range(len(listing_ids))):
+            if listing_ids[listings_id] in rev_id_reviews:
+                count += 1
+                x = np.ndarray.tolist(listings_csv.values[listings_id + 1,:])
+                x.append(rev_id_reviews[listing_ids[listings_id]])
+                review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
+                self.data[x[0]] = {header[i]:x[i] for i in range(1, len(header))}
+        import pdb; pdb.set_trace()
                 
     def load_data(self):
         # load_file = open(self.args.combined_load_path)
@@ -66,7 +93,7 @@ class Dataset():
         file = file.values[1:] #skip the header
         count = 0
         for data in file:
-            self.data[data[0]] = { header[i]:data[i] for i in range(1, len(header))}
+            self.data[data[0]] = {header[i]:data[i] for i in range(1, len(header))}
             count += 1
         import pdb; pdb.set_trace() #len(self.data["5456"]["comments"])
 
@@ -89,7 +116,8 @@ if __name__ == "__main__":
         args = ap.parse_args()
         dp = Dataset(args)
 
-        if not args.load_data:
-            dp.extract_data()
+        # if not args.load_data:
+        #     dp.extract_data()
             
-        dp.load_data() #load either way
+        # dp.load_data() #load either way
+        dp.do_everything()
