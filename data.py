@@ -6,6 +6,7 @@ import pandas as pd
 from collections import defaultdict
 from tqdm import tqdm
 import numpy as np
+from langdetect import detect
 
 class Dataset():
     #for now every 5 entires (representing 5 business days) will be one data point
@@ -28,7 +29,9 @@ class Dataset():
         rev_id_reviews = defaultdict(list)
 
         for rev_id in tqdm(range(len(reviews_ids))):
-            rev_id_reviews[reviews_ids[rev_id]].append(str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", ''))
+            comment = str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", '')
+            if detect(comment):
+                rev_id_reviews[reviews_ids[rev_id]].append(comment)
             #differing amount of spaces between sentences within each review
             #incorrect spelling
         
@@ -64,7 +67,9 @@ class Dataset():
         rev_id_reviews = defaultdict(list)
 
         for rev_id in tqdm(range(len(reviews_ids))):
-            rev_id_reviews[reviews_ids[rev_id]].append(str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", ''))
+            comment = str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", '')
+            if detect(comment):
+                rev_id_reviews[reviews_ids[rev_id]].append(comment)
             #differing amount of spaces between sentences within each review
             #incorrect spelling
         
@@ -81,6 +86,8 @@ class Dataset():
                 x.append(rev_id_reviews[listing_ids[listings_id]])
                 review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
                 self.data[x[0]] = {header[i]:x[i] for i in range(1, len(header))}
+        print(count)
+        print(review_counts)
         import pdb; pdb.set_trace()
                 
     def load_data(self):
