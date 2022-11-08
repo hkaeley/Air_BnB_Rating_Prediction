@@ -186,8 +186,11 @@ class Dataset():
 
         for rev_id in tqdm(range(len(reviews_ids))):
             review_string = str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", '')
-            if len(review_string) >= self.string_len_threshold and detect(review_string) == 'en':
-                rev_id_reviews[reviews_ids[rev_id]].append(review_string)
+            try:
+                if len(review_string) >= self.string_len_threshold and detect(review_string) == 'en':
+                    rev_id_reviews[reviews_ids[rev_id]].append(review_string)
+            except:
+                continue
             #differing amount of spaces between sentences within each review
             #incorrect spelling
 
@@ -228,11 +231,11 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset.pkl', 'wb') as f:
+        with open('dataset2.pkl', 'wb') as f:
             pkl.dump(self, f)
 
     def load(self):
-        with open('dataset.pkl', 'rb') as f:
+        with open('dataset2.pkl', 'rb') as f:
             return pkl.load(f)
 
 
