@@ -178,16 +178,23 @@ class Dataset():
         # import pdb; pdb.set_trace()
         self.feature_index_list = [0, 6, 7, 15, 16, 26, 32, 33, 34, 36, 37, 38, 39, 40, 56, 57, 58, 67]
         listings_csv = listings_csv.dropna(subset=self.feature_index_list).reset_index(drop=True)
-        # import pdb; pdb.set_trace()
-        listing_ids = listings_csv.values[1:,0]
+        listing_ids = listings_csv.values[1:,0].astype(np.int64) #some ids are strings
         reviews_csv = pd.read_csv(self.review_file_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
-        reviews_ids = reviews_csv.values[1:,0]
+        reviews_ids = reviews_csv.values[1:,0].astype(np.int64) #some ids are strings
         rev_id_reviews = defaultdict(list)
 
         for rev_id in tqdm(range(len(reviews_ids))):
+            if reviews_ids[rev_id] not in listing_ids: #if id of the review was filtered out of the listings
+                continue 
             review_string = str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", '')
-            if len(review_string) >= self.string_len_threshold and detect(review_string) == 'en':
-                rev_id_reviews[reviews_ids[rev_id]].append(review_string)
+            try:
+                if len(review_string) >= self.string_len_threshold and detect(review_string) == 'en':
+                    rev_id_reviews[reviews_ids[rev_id]].append(review_string)
+            except:
+                continue
+            if self.args.data_count != -1 and len(rev_id_reviews) == self.args.data_count:
+                break #finish dataset creation once number of ids with at least one review in the dataset == data_count
+
             #differing amount of spaces between sentences within each review
             #incorrect spelling
 
@@ -198,16 +205,22 @@ class Dataset():
         review_counts = {}
         self.data = {}
         for listings_id in tqdm(range(len(listing_ids))):
-            if listing_ids[listings_id] in rev_id_reviews:
+            if listing_ids[listings_id] in rev_id_reviews: #technically this check not needed anymore since only ids left after listings filtering had their reviews extracted
                 x = np.ndarray.tolist(listings_csv.values[listings_id + 1,:])
                 count += 1
                 x.append(rev_id_reviews[listing_ids[listings_id]])
                 review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
                 dat = {self.header[i]:x[i] for i in range(1, len(self.header))}
+                dat['description'] = x[-1] #want value of description to be all the reviews (which are appended to the end of x above), not just the current listing's review
                 for k in set(dat.keys()) - set(self.feature_list):
                     del dat[k]
-                self.data[x[0]] = dat
+                # if int(x[0]) in self.data: #means we found another review to add
+                #     self.data[int(x[0])]['description'].append(dat['description']) 
+                # else:
+                #     dat['description'] = [dat['description']] #make a list so we can add reviews in the future if there are multiple
+                self.data[int(x[0])] = dat
         self.type_check_data()
+        print(count)        
                 
     def load_data(self):
         # load_file = open(self.args.combined_load_path)
@@ -220,31 +233,32 @@ class Dataset():
         count = 0
         for data in file:
             self.data[data[0]] = {header[i]:data[i] for i in range(1, len(header))}
-            count += 1
-
-        #TODO: fix issue with number of comments in load_data being inflated after extraction
-        
+            count += 1        
 
 
 
     def save(self):
         with open('dataset.pkl', 'wb') as f:
             pkl.dump(self, f)
+        print('Dataset saved!')
 
     def load(self):
         with open('dataset.pkl', 'rb') as f:
+            print('Dataset loaded!')
             return pkl.load(f)
+        
 
 
 
 if __name__ == "__main__":
         ap = ArgumentParser(description='The parameters for creating dataset.')
-        ap.add_argument('--listings_path', type=str, default=r"C:\Users\Anurag\Desktop\Airbnb_data\listings.csv", help="The path defining location of listings dataset.")
-        ap.add_argument('--reviews_path', type=str, default=r"C:\Users\Anurag\Desktop\Airbnb_data\reviews.csv", help="The path defining location of reviews dataset.")
+        ap.add_argument('--listings_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/listings.csv", help="The path defining location of listings dataset.")
+        ap.add_argument('--reviews_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
         ap.add_argument('--output_file', type=str, default="combined_data.csv", help="The path defining location of combined dataset for storage.")
         ap.add_argument('--combined_load_path', type=str, default="combined_data.csv", help="The path defining location of combined dataset for loading.")
         ap.add_argument('--load_data', type=bool, default = False)
         ap.add_argument('--string_len_threshold', type=int, default = 10)
+        ap.add_argument('--data_count', type=int, default = -1, help="Will stop dataset creation once amount of ids in dataset with reviews is equal to data_count")
         args = ap.parse_args()
         dp = Dataset(args)
 
@@ -255,4 +269,8 @@ if __name__ == "__main__":
         dp.do_everything()
         dp.save()
         dat = dp.load()
-        pdb.set_trace()
+
+#python data.py --data_count 10
+#python train.py --load_data True --log_wandb False
+
+
