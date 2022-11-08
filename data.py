@@ -238,7 +238,7 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset.pkl', 'wb') as f:
+        with open('dataset2.pkl', 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 
