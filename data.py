@@ -198,7 +198,7 @@ class Dataset():
             #differing amount of spaces between sentences within each review
             #incorrect spelling
 
-        self.feature_list = ['description', 'neighborhood_overview', 'host_response_time', 'host_response_rate', 'host_identity_verified', 'property_type', 'room_type', 'accommodates', 'bathrooms_text', 'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews', 'number_of_reviews_ltm', 'number_of_reviews_l30d', 'review_scores_value']
+        self.feature_list = ['description', 'neighborhood_overview', 'host_response_time', 'host_response_rate', 'host_identity_verified', 'property_type', 'room_type', 'accommodates', 'bathrooms_text', 'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews', 'number_of_reviews_ltm', 'number_of_reviews_l30d', 'review_scores_value', 'comments']
 
         self.header = [i for i in listings_csv.values[0]] + [reviews_csv.values[0][5]]
         count = 0
@@ -211,7 +211,7 @@ class Dataset():
                 x.append(rev_id_reviews[listing_ids[listings_id]])
                 review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
                 dat = {self.header[i]:x[i] for i in range(1, len(self.header))}
-                dat['description'] = x[-1] #want value of description to be all the reviews (which are appended to the end of x above), not just the current listing's review
+                # dat['description'] = x[-1] #want value of description to be all the reviews (which are appended to the end of x above), not just the current listing's review
                 for k in set(dat.keys()) - set(self.feature_list):
                     del dat[k]
                 # if int(x[0]) in self.data: #means we found another review to add
@@ -238,7 +238,7 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset2.pkl', 'wb') as f:
+        with open('dataset.pkl', 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 

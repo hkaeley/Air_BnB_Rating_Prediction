@@ -54,7 +54,7 @@ class AirbnbSentimentModel(nn.Module):
         else:
             bider = False
             lstm_hidden_linear = lstm_hidden
-        self.sentiment_lstm = nn.LSTM(input_size = bert_id_embedding_size, hidden_size = lstm_hidden, num_layers = lstm_layers, bidirectional = bider)
+        self.sentiment_lstm = nn.LSTM(input_size = bert_id_embedding_size, hidden_size = lstm_hidden, num_layers = lstm_layers, bidirectional = bider, batch_first=True)
 
         self.final_mlp = nn.Linear(in_features = 3, out_features = 1)
 
@@ -68,7 +68,8 @@ class AirbnbSentimentModel(nn.Module):
         
     #use 1d instead of 2d for conv and maxpool 
 
-    def forward(self, numerical_input, description, neighborhood_overview, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input):
+    def forward(self, numerical_input, reviews, description, neighborhood_overview, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input):
+        property_reviews = reviews
         property_description_text = description
         #TODO: turn all sentiment stuff into nn.sequential module and create 2 sentiment modules: one for propery description & one for neighborhood description
         neighborhood_overview_text = neighborhood_overview
@@ -89,11 +90,14 @@ class AirbnbSentimentModel(nn.Module):
         numerical_input = torch.cat((numerical_input, bathrooms_one_hot), axis=1)
         numerical_input = torch.cat((numerical_input, host_reponse_time_one_hot), axis=1)
 
-        bert_sentiment_property_description = torch.tensor([]) #will contain the average bert sentiment score output for each data in the batch
+        bert_sentiment_reviews = torch.tensor([]) #will contain the average bert sentiment score output for each data in the batch
         bert_sentiment_neighborhood_overview_text = torch.tensor([])
+        bert_sentiment_description_text = torch.tensor([])
 
-        cnn_lstm_sentiment_property_description = torch.tensor([])
+
+        cnn_lstm_sentiment_reviews = torch.tensor([])
         cnn_lstm_sentiment_neighborhood_overview_text = torch.tensor([])
+        cnn_lstm_sentiment_description_text = torch.tensor([])
 
         #tokenize input reviews into embeddings, iterate through all the text in the batch
         # for text in property_description_text:
@@ -101,7 +105,7 @@ class AirbnbSentimentModel(nn.Module):
         #     encoded_property_description_text_tokens = torch.cat((encoded_property_description_text_tokens, text_embedding), axis=0) 
 
         #each data point could have multiple reviews, so we will take them all and find their average sentiment score
-        for list_of_text in property_description_text:
+        for list_of_text in property_reviews:
             bert_intermediate_values = torch.tensor([]) 
             cnn_lstm_intermediate_values = torch.tensor([])
             #iterate through all reviews for given datapoint
@@ -111,34 +115,34 @@ class AirbnbSentimentModel(nn.Module):
                 text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids']
                 
                 #send input tokens in bert model & corresponding nn.linear output which will be final sentiment score
-                property_description_bert_output = self.bert(text_embedding)[1] #this will give us bert's pooled hidden state values in the shape (batch_size, hidden_dim), for our pretrained bert the hidden_dim is 768
-                property_description_bert_output = torch.tanh(self.bert_sentiment_output(property_description_bert_output)) #make sentiment score btwn -1, 1 range
+                reviews_bert_output = self.bert(text_embedding)[1] #this will give us bert's pooled hidden state values in the shape (batch_size, hidden_dim), for our pretrained bert the hidden_dim is 768
+                reviews_bert_output = torch.tanh(self.bert_sentiment_output(reviews_bert_output)) #make sentiment score btwn -1, 1 range
 
                 # #TODO: NEED TO FIND OUT OTHER WAY TO ENCODE DATA FOR CNN-LSTM INPUT, 30,000 LENGTH ONE HOT ENCODING IS TOO INEFFICIENT [SOLVED] 
                 # property_description_cnn_lstm_output = f.one_hot(text_embedding, num_classes=self.vocab_file_size).float().permute(0,2,1).to(self.device) #get one hot encoding for each token id given the vocab size, shape = batch size x sequence len x vocab_size
                 #                                                                                                                                     #change input dims to fit what conv1d is expecting
 
                 #use embeddings insetad of one hot, channel length will be 1, get embeddings using the tokenized ids (each word corresponds to an id in the vocab, so we map each id to an embedding)
-                property_description_cnn_lstm_output = self.bert_ids_to_embeddings(text_embedding).float().permute(0,2,1).to(self.device) #for a given sentence this should give us a 1d embedding array, (batch size x )
+                reviews_cnn_lstm_output = self.bert_ids_to_embeddings(text_embedding).float().permute(0,2,1).to(self.device) #for a given sentence this should give us a 1d embedding array, (batch size x )
 
                 #send token embeddings into the cnn, will have to put the channels (last dim of encoded text tokens)
-                property_description_cnn_lstm_output = self.sentiment_cnn(property_description_cnn_lstm_output)
+                reviews_cnn_lstm_output = self.sentiment_cnn(reviews_cnn_lstm_output)
                 #maxpool
-                property_description_cnn_lstm_output = self.sentiment_cnn(property_description_cnn_lstm_output)
+                reviews_cnn_lstm_output = self.sentiment_cnn_pool(reviews_cnn_lstm_output)
 
                 #send maxpool output in lstm
-                
-                property_description_cnn_lstm_output, (hidden, cell) = self.sentiment_lstm(property_description_cnn_lstm_output.permute(0,2,1)) #permute input again to fit what lstm is expecte,
+                reviews_cnn_lstm_output, (hidden, cell) = self.sentiment_lstm(reviews_cnn_lstm_output.permute(0,2,1)) #permute input again to fit what lstm is expecte,
                                                                                                                                             #use lstm's final hidden space as output
-                property_description_cnn_lstm_output = property_description_cnn_lstm_output[-1, :, :] #use last lstm layer's final hidden state as the lstm's output
-                property_description_cnn_lstm_output = self.cnn_lstm_sentiment_output(property_description_cnn_lstm_output)
+                reviews_cnn_lstm_output = reviews_cnn_lstm_output[:, -1, :] #use last lstm layer's final hidden state as the lstm's output
+            
+                reviews_cnn_lstm_output = torch.tanh(self.cnn_lstm_sentiment_output(reviews_cnn_lstm_output))
 
-                bert_intermediate_values = torch.cat((bert_intermediate_values, property_description_bert_output), axis=0)
-                cnn_lstm_intermediate_values = torch.cat((cnn_lstm_intermediate_values, property_description_cnn_lstm_output), axis=0)
+                bert_intermediate_values = torch.cat((bert_intermediate_values, reviews_bert_output), axis=0)
+                cnn_lstm_intermediate_values = torch.cat((cnn_lstm_intermediate_values, reviews_cnn_lstm_output), axis=0)
 
 
-            bert_sentiment_property_description = torch.cat((bert_sentiment_property_description, torch.mean(bert_intermediate_values)), axis=0) 
-            cnn_lstm_sentiment_property_description = torch.cat((cnn_lstm_sentiment_property_description, torch.mean(cnn_lstm_intermediate_values)), axis=0) 
+            bert_sentiment_reviews = torch.cat((bert_sentiment_reviews, torch.mean(bert_intermediate_values)), axis=0) 
+            cnn_lstm_sentiment_reviews = torch.cat((cnn_lstm_sentiment_reviews, torch.mean(cnn_lstm_intermediate_values)), axis=0) 
 
 
         #pass listing data into mlp, softmax after
@@ -148,13 +152,13 @@ class AirbnbSentimentModel(nn.Module):
         encoded_listing_output = nn.Softmax(encoded_listing_output)
         
         #concat everything together
-        encoded_listing_output = torch.cat((encoded_listing_output, bert_sentiment_property_description), axis=0) 
-        encoded_listing_output = torch.cat((encoded_listing_output, cnn_lstm_sentiment_property_description), axis=0) 
+        encoded_listing_output = torch.cat((encoded_listing_output, bert_sentiment_reviews), axis=0) 
+        encoded_listing_output = torch.cat((encoded_listing_output, cnn_lstm_sentiment_reviews), axis=0) 
 
         #encoded_listing_output should now have the shape of batch size x 3
 
         #pass everything through final mlp
-        return self.final_mlp(encoded_listing_output)
+        return nn.ReLU(self.final_mlp(encoded_listing_output)) #relu here because we need output to be between 0, 5
 
 
 

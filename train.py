@@ -71,6 +71,12 @@ class Trainer():
 
                 intermediate_data = []
                 for datum in data:
+                    intermediate_data.append(datum['comments'])
+                review_input = intermediate_data
+
+
+                intermediate_data = []
+                for datum in data:
                     intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in numerical_features])
                 numerical_input = np.array(intermediate_data)
 
@@ -120,7 +126,7 @@ class Trainer():
                 ground_truth = torch.from_numpy(np.array(label)).float().to(self.args.device).unsqueeze(1)
                             
                 if self.args.model == "AirbnbSentimentModel":
-                    output = self.model(numerical_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input)  
+                    output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
                     loss = self.loss_function(output, ground_truth) 
                     loss.backward()
                     self.optimizer.step()
@@ -156,13 +162,17 @@ class Trainer():
 
             intermediate_data = []
             for datum in data:
+                intermediate_data.append(datum['comments'])
+            review_input = intermediate_data
+
+            intermediate_data = []
+            for datum in data:
                 intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in numerical_features])
             numerical_input = np.array(intermediate_data)
 
             intermediate_data = []
             for datum in data:
                 intermediate_data.append(datum['description'])
-            
             #description_input = np.array(intermediate_data)
             description_input = intermediate_data
 
@@ -205,7 +215,7 @@ class Trainer():
             ground_truth = torch.from_numpy(np.array(label)).float().to(self.args.device).unsqueeze(1)
                         
             if self.args.model == "AirbnbSentimentModel":
-                output = self.model(numerical_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
+                output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
                 y_true.append(ground_truth)
                 y_pred.append(output)
             else:
