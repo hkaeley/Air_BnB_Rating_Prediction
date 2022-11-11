@@ -7,8 +7,8 @@ from collections import defaultdict
 from tqdm import tqdm
 import numpy as np
 from langdetect import detect
+import random
 import pdb
-from tqdm import tqdm
 from numpy import argmax
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
@@ -24,6 +24,7 @@ class Dataset():
         self.listings_file_path = args.listings_path
         self.output_file = args.output_file
         self.string_len_threshold = args.string_len_threshold
+        self.min_reviews = args.min_reviews
 
 
     def extract_data(self):
@@ -136,6 +137,7 @@ class Dataset():
             listing_data['host_response_time'] = resp_encoded[count]
             count+=1
         
+        pdb.set_trace()
         #description
         # neighborhood_overview
         # host_response_time
@@ -169,13 +171,6 @@ class Dataset():
         for i in range(len(listings_csv.values[0,:])): 
             print(listings_csv.values[0,:][i], i)
         
-        # monkeys = [0, 6, 7, 15, 16, 26, 32, 33, 34, 36, 37, 38, 39, 40, 56, 57, 58, 67 ]
-        # ind_cuh = []
-        # for c in range(len(monkeys)):
-        #     ind_cuh.append(monkeys[c])
-        #     gay = listings_csv.copy()6
-        #     print(monkeys[c], gay.dropna(subset=ind_cuh).values.shape)
-        # import pdb; pdb.set_trace()
         self.feature_index_list = [0, 6, 7, 15, 16, 26, 32, 33, 34, 36, 37, 38, 39, 40, 56, 57, 58, 67]
         listings_csv = listings_csv.dropna(subset=self.feature_index_list).reset_index(drop=True)
         listing_ids = listings_csv.values[1:,0].astype(np.int64) #some ids are strings
@@ -205,10 +200,10 @@ class Dataset():
         review_counts = {}
         self.data = {}
         for listings_id in tqdm(range(len(listing_ids))):
-            if listing_ids[listings_id] in rev_id_reviews: #technically this check not needed anymore since only ids left after listings filtering had their reviews extracted
+            if listing_ids[listings_id] in rev_id_reviews and len(rev_id_reviews[listing_ids[listings_id]]) >= self.min_reviews: #technically this check not needed anymore since only ids left after listings filtering had their reviews extracted
                 x = np.ndarray.tolist(listings_csv.values[listings_id + 1,:])
                 count += 1
-                x.append(rev_id_reviews[listing_ids[listings_id]])
+                x.append(random.sample(rev_id_reviews[listing_ids[listings_id]],self.min_reviews))
                 review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
                 dat = {self.header[i]:x[i] for i in range(1, len(self.header))}
                 # dat['description'] = x[-1] #want value of description to be all the reviews (which are appended to the end of x above), not just the current listing's review
@@ -238,7 +233,7 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset.pkl', 'wb') as f:
+        with open('dataset3.pkl', 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 
@@ -252,13 +247,14 @@ class Dataset():
 
 if __name__ == "__main__":
         ap = ArgumentParser(description='The parameters for creating dataset.')
-        ap.add_argument('--listings_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/listings.csv", help="The path defining location of listings dataset.")
-        ap.add_argument('--reviews_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
+        ap.add_argument('--listings_path', type=str, default=r"C:\Users\Anurag\Desktop\Airbnb_data/listings.csv", help="The path defining location of listings dataset.")
+        ap.add_argument('--reviews_path', type=str, default=r"C:\Users\Anurag\Desktop\Airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
         ap.add_argument('--output_file', type=str, default="combined_data.csv", help="The path defining location of combined dataset for storage.")
         ap.add_argument('--combined_load_path', type=str, default="combined_data.csv", help="The path defining location of combined dataset for loading.")
         ap.add_argument('--load_data', type=bool, default = False)
         ap.add_argument('--string_len_threshold', type=int, default = 10)
         ap.add_argument('--data_count', type=int, default = -1, help="Will stop dataset creation once amount of ids in dataset with reviews is equal to data_count")
+        ap.add_argument('--min_reviews', type=int, default = 5, help="minimum amount of reviews acceptable")
         args = ap.parse_args()
         dp = Dataset(args)
 
