@@ -64,7 +64,7 @@ class Dataset():
 
         print(count)
         print(review_counts)
-        import pdb; pdb.set_trace() #review_counts["5456"]
+        # import pdb; pdb.set_trace() #review_counts["5456"]
                 
         new_file.close()
     
@@ -137,7 +137,7 @@ class Dataset():
             listing_data['host_response_time'] = resp_encoded[count]
             count+=1
         
-        pdb.set_trace()
+        # pdb.set_trace()
         #description
         # neighborhood_overview
         # host_response_time
@@ -200,10 +200,14 @@ class Dataset():
         review_counts = {}
         self.data = {}
         for listings_id in tqdm(range(len(listing_ids))):
-            if listing_ids[listings_id] in rev_id_reviews and len(rev_id_reviews[listing_ids[listings_id]]) >= self.min_reviews: #technically this check not needed anymore since only ids left after listings filtering had their reviews extracted
+            if listing_ids[listings_id] in rev_id_reviews: #and len(rev_id_reviews[listing_ids[listings_id]]) >= self.min_reviews: #technically this check not needed anymore since only ids left after listings filtering had their reviews extracted
+                                                                #commenting this out so tht points in our dataset have comments <= min_revs
                 x = np.ndarray.tolist(listings_csv.values[listings_id + 1,:])
                 count += 1
-                x.append(random.sample(rev_id_reviews[listing_ids[listings_id]],self.min_reviews))
+                if len(rev_id_reviews[listing_ids[listings_id]]) >= self.min_reviews: #only sample randomly if the len is greater than the min sample
+                    x.append(random.sample(rev_id_reviews[listing_ids[listings_id]],self.min_reviews))
+                else:
+                    x.append(rev_id_reviews[listing_ids[listings_id]])
                 review_counts[listing_ids[listings_id] ] = len(rev_id_reviews[listing_ids[listings_id]])
                 dat = {self.header[i]:x[i] for i in range(1, len(self.header))}
                 # dat['description'] = x[-1] #want value of description to be all the reviews (which are appended to the end of x above), not just the current listing's review
@@ -233,12 +237,12 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset3.pkl', 'wb') as f:
+        with open('dataset_full.pkl', 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 
     def load(self):
-        with open('dataset.pkl', 'rb') as f:
+        with open('dataset_full.pkl', 'rb') as f:
             print('Dataset loaded!')
             return pkl.load(f)
         
@@ -247,8 +251,8 @@ class Dataset():
 
 if __name__ == "__main__":
         ap = ArgumentParser(description='The parameters for creating dataset.')
-        ap.add_argument('--listings_path', type=str, default=r"C:\Users\Anurag\Desktop\Airbnb_data/listings.csv", help="The path defining location of listings dataset.")
-        ap.add_argument('--reviews_path', type=str, default=r"C:\Users\Anurag\Desktop\Airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
+        ap.add_argument('--listings_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/listings.csv", help="The path defining location of listings dataset.")
+        ap.add_argument('--reviews_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
         ap.add_argument('--output_file', type=str, default="combined_data.csv", help="The path defining location of combined dataset for storage.")
         ap.add_argument('--combined_load_path', type=str, default="combined_data.csv", help="The path defining location of combined dataset for loading.")
         ap.add_argument('--load_data', type=bool, default = False)

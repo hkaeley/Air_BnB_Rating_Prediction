@@ -6,6 +6,7 @@ import sys, os
 from pathlib import Path
 import wandb 
 import sklearn.model_selection
+from sklearn.metrics import r2_score
 
 sys.path.append("../data")
 from data import Dataset
@@ -136,10 +137,10 @@ class Trainer():
         
 
             if self.epoch_idx % int(self.args.test_step) == 0 or self.epoch_idx == int(self.args.epochs) - 1: #include last epoch as well
-                del input
-                del ground_truth
-                del output
-                torch.cuda.empty_cache()
+                # del input
+                # del ground_truth
+                # del output
+                torch.cuda.empty_cache() #removes current train input that we do not need anymore
                 self.evaluate()   
                 torch.cuda.empty_cache()
 
@@ -260,7 +261,11 @@ class Trainer():
                         num_same_sign += 1
                     elif y_pred[a] == y_pred[b]: #case in which they are equal
                         num_same_sign += .5
-                
+        
+        if y_true.size()[0] == 1: #eans we have one data point in batch
+            return 1.0
+        if num_pairs == 0: #means all ground truth values are equal
+            return 0
         return num_same_sign / num_pairs
 
     def compute_r2_score_batch(self, y_true, y_pred):
@@ -380,6 +385,8 @@ if __name__ == "__main__":
         ap.add_argument('--combined_load_path', type=str, default="combined_data.csv", help="The path defining location of combined dataset for loading.")
         ap.add_argument('--string_len_threshold', type=int, default = 10)
         ap.add_argument('--load_data', type=str, default = "False")
+        ap.add_argument('--min_reviews', type=int, default = 5, help="minimum amount of reviews acceptable")
+
 
 
         ap.add_argument('--model', type=str, default = "AirbnbSentimentModel")
@@ -390,9 +397,9 @@ if __name__ == "__main__":
         ap.add_argument('--bert_hidden_size', type=int, default = 768)
         ap.add_argument('--bert_num_hidden_layers', type=int, default = 12)
         ap.add_argument('--bert_num_attention_heads', type=int, default = 12)
-        ap.add_argument('--listings_mlp_in', type=int, default = 3)
-        ap.add_argument('--listings_mlp_hidden', type=int, default = 2)
-        ap.add_argument('--listings_mlp_out', type=int, default = 3)
+        ap.add_argument('--listings_mlp_in', type=int, default = 14)
+        ap.add_argument('--listings_mlp_hidden', type=int, default = 8)
+        ap.add_argument('--listings_mlp_out', type=int, default = 1)
         ap.add_argument('--cnn_in_channels', type=int, default = 3)
         ap.add_argument('--cnn_out_channels', type=int, default = 3)
         ap.add_argument('--cnn_kernel_size', type=int, default = 3) #defaults to 3 because of paper we referenced
@@ -414,7 +421,7 @@ if __name__ == "__main__":
         ap.add_argument('--epochs', type=int, default = 50)
         ap.add_argument('--device', type=str, default = "cpu")
         ap.add_argument('--test_step', type=int, default = 5)
-        ap.add_argument('--batch_size', type=int, default = 1)
+        ap.add_argument('--batch_size', type=int, default = 4)
         ap.add_argument('--optimizer', type=str, default = "Adam")
         ap.add_argument('--learning_rate', type=float, default = 0.0001)
 
