@@ -58,10 +58,18 @@ class AirbnbSentimentModel(nn.Module):
 
         self.final_mlp = nn.Linear(in_features = 3, out_features = 1)
 
-        self.property_type_embeddings = nn.Linear(4, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+        #10 count encodings sizes
+        # self.property_type_embeddings = nn.Linear(4, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+        # self.room_type_embeddings = nn.Linear(2, 1)
+        # self.bathrooms_embeddings = nn.Linear(5, 1)
+        # self.host_response_time_embeddings = nn.Linear(2, 1)
+
+        #1000 count encodings sizes
+        self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
         self.room_type_embeddings = nn.Linear(2, 1)
-        self.bathrooms_embeddings = nn.Linear(5, 1)
-        self.host_response_time_embeddings = nn.Linear(2, 1)
+        self.bathrooms_embeddings = nn.Linear(10, 1)
+        self.host_response_time_embeddings = nn.Linear(3, 1)
+
         self.bert_sentiment_output = nn.Linear(self.bert.config.hidden_size, 1)
         self.cnn_lstm_sentiment_output = nn.Linear(lstm_hidden_linear, 1)
 
@@ -69,6 +77,7 @@ class AirbnbSentimentModel(nn.Module):
     #use 1d instead of 2d for conv and maxpool 
 
     def forward(self, numerical_input, reviews, description, neighborhood_overview, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input):
+        # import pdb; pdb.set_trace()
         property_reviews = reviews
         property_description_text = description
         #TODO: turn all sentiment stuff into nn.sequential module and create 2 sentiment modules: one for propery description & one for neighborhood description

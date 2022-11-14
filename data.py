@@ -237,12 +237,12 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset_full.pkl', 'wb') as f:
+        with open('dataset_100_count.pkl', 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 
     def load(self):
-        with open('dataset_full.pkl', 'rb') as f:
+        with open('dataset_100_count.pkl', 'rb') as f:
             print('Dataset loaded!')
             return pkl.load(f)
         
