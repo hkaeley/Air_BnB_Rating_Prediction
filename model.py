@@ -99,14 +99,14 @@ class AirbnbSentimentModel(nn.Module):
         numerical_input = torch.cat((numerical_input, bathrooms_one_hot), axis=1)
         numerical_input = torch.cat((numerical_input, host_reponse_time_one_hot), axis=1)
 
-        bert_sentiment_reviews = torch.tensor([]) #will contain the average bert sentiment score output for each data in the batch
-        bert_sentiment_neighborhood_overview_text = torch.tensor([])
-        bert_sentiment_description_text = torch.tensor([])
+        bert_sentiment_reviews = torch.tensor([]).to(self.device) #will contain the average bert sentiment score output for each data in the batch
+        bert_sentiment_neighborhood_overview_text = torch.tensor([]).to(self.device)
+        bert_sentiment_description_text = torch.tensor([]).to(self.device)
 
 
-        cnn_lstm_sentiment_reviews = torch.tensor([])
-        cnn_lstm_sentiment_neighborhood_overview_text = torch.tensor([])
-        cnn_lstm_sentiment_description_text = torch.tensor([])
+        cnn_lstm_sentiment_reviews = torch.tensor([]).to(self.device)
+        cnn_lstm_sentiment_neighborhood_overview_text = torch.tensor([]).to(self.device)
+        cnn_lstm_sentiment_description_text = torch.tensor([]).to(self.device)
 
         #tokenize input reviews into embeddings, iterate through all the text in the batch
         # for text in property_description_text:
@@ -115,14 +115,14 @@ class AirbnbSentimentModel(nn.Module):
 
         #each data point could have multiple reviews, so we will take them all and find their average sentiment score
         for list_of_text in property_reviews:
-            bert_intermediate_values = torch.tensor([]) 
-            cnn_lstm_intermediate_values = torch.tensor([])
+            bert_intermediate_values = torch.tensor([]).to(self.device)
+            cnn_lstm_intermediate_values = torch.tensor([]).to(self.device)
             #iterate through all reviews for given datapoint
 
             #TODO: NEED TO FIND A MORE EFFICIENT WAY TO DO THIS CONSIDERING THAT LISTINGS CAN HAVE HUNDREDS OF REVIEWS....
             for text in list_of_text:
                 
-                text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids']
+                text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids'].to(self.device)
                 
                 #send input tokens in bert model & corresponding nn.linear output which will be final sentiment score
                 reviews_bert_output = self.bert(text_embedding)[1] #this will give us bert's pooled hidden state values in the shape (batch_size, hidden_dim), for our pretrained bert the hidden_dim is 768
@@ -151,8 +151,8 @@ class AirbnbSentimentModel(nn.Module):
                 bert_intermediate_values = torch.cat((bert_intermediate_values, reviews_bert_output), axis=0)
                 cnn_lstm_intermediate_values = torch.cat((cnn_lstm_intermediate_values, reviews_cnn_lstm_output), axis=0)
 
-            bert_sentiment_reviews = torch.cat((bert_sentiment_reviews, torch.mean(bert_intermediate_values).unsqueeze(0)), axis=0) 
-            cnn_lstm_sentiment_reviews = torch.cat((cnn_lstm_sentiment_reviews, torch.mean(cnn_lstm_intermediate_values).unsqueeze(0)), axis=0) 
+            bert_sentiment_reviews = torch.cat((bert_sentiment_reviews, torch.mean(bert_intermediate_values).unsqueeze(0).to(self.device)), axis=0) 
+            cnn_lstm_sentiment_reviews = torch.cat((cnn_lstm_sentiment_reviews, torch.mean(cnn_lstm_intermediate_values).unsqueeze(0).to(self.device)), axis=0) 
 
 
         #pass listing data into mlp, softmax after
