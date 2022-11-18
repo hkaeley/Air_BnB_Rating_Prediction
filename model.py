@@ -31,7 +31,7 @@ class AirbnbSentimentModel(nn.Module):
         else:
             self.bert_config = BertConfig(hidden_size = bert_hidden_size, num_hidden_layers = bert_num_hidden_layers, num_attention_heads = bert_num_attention_heads, use_auth_token=True)
             
-        self.bert = BertModel(self.bert_config)
+        self.bert = BertModel(self.bert_config) #for now we are loading the pretrained bert model and fine tuning it
         if tokenize == "Fast":
             self.word_tokenizer = BertTokenizerFast(vocab_file  = vocab_file, use_auth_token=True)
         elif tokenize == "Normal":

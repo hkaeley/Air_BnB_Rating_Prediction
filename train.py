@@ -13,6 +13,7 @@ from data import Dataset
 sys.path.append("../model")
 from model import AirbnbSentimentModel
 from rnn_lstm import LSTM_Baseline
+from baseline_mlp import MLP_Baseline
 
 class Trainer():
     def __init__(self, args):
@@ -42,6 +43,12 @@ class Trainer():
             device = self.args.device, sentiment_pool_kernel_size = self.args.sentiment_pool_kernel_size)
         elif self.args.model == "LSTM_Baseline":
             self.model = LSTM_Baseline(tokenize = self.args.tokenize, pretrained_bert = self.args.pretrained_bert, language = self.args.language, 
+            bert_hidden_size = self.args.bert_hidden_size, bert_num_hidden_layers = self.args.bert_num_hidden_layers, 
+            bert_num_attention_heads = self.args.bert_num_attention_heads, listings_mlp_in = self.args.listings_mlp_in, listings_mlp_hidden = self.args.listings_mlp_hidden, 
+            listings_mlp_out = self.args.listings_mlp_out, cnn_kernel_size = self.args.cnn_kernel_size, lstm_hidden = self.args.lstm_hidden, lstm_layers = self.args.lstm_layers, bider = self.args.bider,
+            device = self.args.device, sentiment_pool_kernel_size = self.args.sentiment_pool_kernel_size)
+        elif self.args.model == "MLP_Baseline":
+            self.model = MLP_Baseline(tokenize = self.args.tokenize, pretrained_bert = self.args.pretrained_bert, language = self.args.language, 
             bert_hidden_size = self.args.bert_hidden_size, bert_num_hidden_layers = self.args.bert_num_hidden_layers, 
             bert_num_attention_heads = self.args.bert_num_attention_heads, listings_mlp_in = self.args.listings_mlp_in, listings_mlp_hidden = self.args.listings_mlp_hidden, 
             listings_mlp_out = self.args.listings_mlp_out, cnn_kernel_size = self.args.cnn_kernel_size, lstm_hidden = self.args.lstm_hidden, lstm_layers = self.args.lstm_layers, bider = self.args.bider,
@@ -132,7 +139,7 @@ class Trainer():
                 # neighborhood_overview_input = torch.from_numpy(neighborhood_overview_input).to(self.args.device)
                 ground_truth = torch.from_numpy(np.array(label)).float().to(self.args.device).unsqueeze(1)
                             
-                if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline":
+                if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline" or self.args.model == "MLP_Baseline":
                     output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
                     loss = self.loss_function(output, ground_truth) 
                     loss.backward()
@@ -221,7 +228,7 @@ class Trainer():
             # neighborhood_overview_input = torch.from_numpy(neighborhood_overview_input).to(self.args.device)
             ground_truth = torch.from_numpy(np.array(label)).float().to(self.args.device).unsqueeze(1)
                         
-            if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline":
+            if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline" or self.args.model == "MLP_Baseline":
                 output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
                 y_true.append(ground_truth)
                 y_pred.append(output)
@@ -290,6 +297,7 @@ class Trainer():
         return agg_loss
 
     def metrics(self, y_true, y_pred, x_data):
+
         #compute agg loss
         agg_loss = self.compute_loss(y_true, y_pred)
 
@@ -328,6 +336,7 @@ class Trainer():
         #combine train and val results into one to make logging easier
         #   only log both during inference
         val_results.update(train_results)
+        
         if self.args.log_wandb == "True":
             wandb.log(val_results)
         else:
