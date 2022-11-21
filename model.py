@@ -64,11 +64,18 @@ class AirbnbSentimentModel(nn.Module):
         # self.bathrooms_embeddings = nn.Linear(5, 1)
         # self.host_response_time_embeddings = nn.Linear(2, 1)
 
+        #100 count encodings sizes
+        # self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+        # self.room_type_embeddings = nn.Linear(2, 1)
+        # self.bathrooms_embeddings = nn.Linear(10, 1)
+        # self.host_response_time_embeddings = nn.Linear(3, 1)
+
         #1000 count encodings sizes
-        self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        self.room_type_embeddings = nn.Linear(2, 1)
-        self.bathrooms_embeddings = nn.Linear(10, 1)
-        self.host_response_time_embeddings = nn.Linear(3, 1)
+        self.property_type_embeddings = nn.Linear(33, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+        self.room_type_embeddings = nn.Linear(3, 1)
+        self.bathrooms_embeddings = nn.Linear(18, 1)
+        self.host_response_time_embeddings = nn.Linear(4, 1)
+
 
         self.bert_sentiment_output = nn.Linear(self.bert.config.hidden_size, 1)
         self.cnn_lstm_sentiment_output = nn.Linear(lstm_hidden_linear, 1)
@@ -123,8 +130,10 @@ class AirbnbSentimentModel(nn.Module):
             for text in list_of_text:
                 
                 text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids'].to(self.device)
-                
                 #send input tokens in bert model & corresponding nn.linear output which will be final sentiment score
+                if text_embedding.shape[1] > 512: #huggingface bert has sequence limit of 512
+                   text_embedding = text_embedding[:,:50]
+
                 reviews_bert_output = self.bert(text_embedding)[1] #this will give us bert's pooled hidden state values in the shape (batch_size, hidden_dim), for our pretrained bert the hidden_dim is 768
                 reviews_bert_output = f.tanh(self.bert_sentiment_output(reviews_bert_output)) #make sentiment score btwn -1, 1 range
 
