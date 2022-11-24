@@ -154,6 +154,7 @@ class Trainer():
                     tqdm_bar.set_description('Epoch: {:d}, loss_train: {:.4f}'.format(self.epoch_idx, loss.detach().cpu().item()))
                 else:
                     raise ValueError('Model not recognized')
+                torch.cuda.empty_cache()
         
 
             if self.epoch_idx % int(self.args.test_step) == 0 or self.epoch_idx == int(self.args.epochs) - 1: #include last epoch as well
@@ -237,10 +238,13 @@ class Trainer():
                         
             if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline" or self.args.model == "MLP_Baseline" or self.args.model == "AirbnbSentimentModelSimplified":
                 output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
+                output = output.detach().cpu()
+                ground_truth = ground_truth.detach().cpu()
                 y_true.append(ground_truth)
                 y_pred.append(output)
             else:
                 raise ValueError('Model not recognized')
+            torch.cuda.empty_cache()
 
         # for input, label in zip(x_data, y_data): 
         #     ground_truth = label
