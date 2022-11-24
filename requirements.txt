@@ -1,0 +1,8 @@
+scikit-learn
+pandas
+langdetect
+torch
+transformers
+tqdm
+wandb
+numpy
