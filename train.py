@@ -202,10 +202,18 @@ class Trainer():
                 intermediate_data.append(datum['comments'])
             review_input = intermediate_data
 
-            intermediate_data = []
-            for datum in data:
-                intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in numerical_features])
-            numerical_input = np.array(intermediate_data)
+            if self.args.model != "AirbnbSentimentModel_Data_Pruned":
+                intermediate_data = []
+                for datum in data:
+                    intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in numerical_features])
+                numerical_input = np.array(intermediate_data)
+            else:
+                pruned_numerical_features = ['accommodates', 
+                'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews']
+                intermediate_data = []
+                for datum in data:
+                    intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in pruned_numerical_features])
+                numerical_input = np.array(intermediate_data)
 
             intermediate_data = []
             for datum in data:
@@ -251,7 +259,7 @@ class Trainer():
             # neighborhood_overview_input = torch.from_numpy(neighborhood_overview_input).to(self.args.device)
             ground_truth = torch.from_numpy(np.array(label)).float().to(self.args.device).unsqueeze(1)
                         
-            if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline" or self.args.model == "MLP_Baseline" or self.args.model == "AirbnbSentimentModelSimplified":
+            if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline" or self.args.model == "MLP_Baseline" or self.args.model == "AirbnbSentimentModelSimplified" or self.args.model == "AirbnbSentimentModel_Data_Pruned":
                 output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
                 output = output.detach().cpu()
                 ground_truth = ground_truth.detach().cpu()
@@ -310,7 +318,7 @@ class Trainer():
     def compute_r2_score_batch(self, y_true, y_pred):
         total = 0
         for b,l in zip(y_true, y_pred):
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             total += r2_score(b.cpu().detach().numpy(),l.cpu().detach().numpy())
         return total / len(y_true)
 
