@@ -186,10 +186,10 @@ class Trainer():
         y_pred = []
         y_true = []
 
-        for i in range(0, len(self.data.train_data_x), self.args.batch_size): # iterate through batches of the dataset 
+        for i in range(0, len(x_data), self.args.batch_size): # iterate through batches of the dataset 
 
-            batch_index = i + self.args.batch_size if i + self.args.batch_size <= len(self.data.train_data_x) else len(self.data.train_data_x)
-            data = self.data.train_data_x[i:batch_index]
+            batch_index = i + self.args.batch_size if i + self.args.batch_size <= len(x_data) else len(x_data)
+            data = x_data[i:batch_index]
 
             numerical_features = ['host_response_rate', 'host_identity_verified', 'accommodates', 
             'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews', 'number_of_reviews_ltm',
@@ -248,7 +248,7 @@ class Trainer():
                 intermediate_data.append(datum['bathrooms_text'])
             bathrooms_text_input = np.array(intermediate_data)
             
-            label = self.data.train_data_y[i:batch_index]
+            label = y_data[i:batch_index]
             numerical_input = torch.from_numpy(numerical_input).float().to(self.args.device)
             host_response_time_input = torch.from_numpy(host_response_time_input).float().to(self.args.device) #must be int type tensors for nn.embeddings
             property_type_input = torch.from_numpy(property_type_input).float().to(self.args.device)
