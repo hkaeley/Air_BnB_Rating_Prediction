@@ -65,16 +65,16 @@ class AirbnbSentimentModel(nn.Module):
         # self.host_response_time_embeddings = nn.Linear(2, 1)
 
         #100 count encodings sizes
-        self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        self.room_type_embeddings = nn.Linear(2, 1)
-        self.bathrooms_embeddings = nn.Linear(10, 1)
-        self.host_response_time_embeddings = nn.Linear(3, 1)
+        # self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+        # self.room_type_embeddings = nn.Linear(2, 1)
+        # self.bathrooms_embeddings = nn.Linear(10, 1)
+        # self.host_response_time_embeddings = nn.Linear(3, 1)
 
         #1000 count encodings sizes
-        # self.property_type_embeddings = nn.Linear(33, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        # self.room_type_embeddings = nn.Linear(3, 1)
-        # self.bathrooms_embeddings = nn.Linear(18, 1)
-        # self.host_response_time_embeddings = nn.Linear(4, 1)
+        self.property_type_embeddings = nn.Linear(33, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+        self.room_type_embeddings = nn.Linear(3, 1)
+        self.bathrooms_embeddings = nn.Linear(18, 1)
+        self.host_response_time_embeddings = nn.Linear(4, 1)
 
 
         self.bert_sentiment_output = nn.Linear(self.bert.config.hidden_size, 1)
@@ -166,9 +166,11 @@ class AirbnbSentimentModel(nn.Module):
 
         #pass listing data into mlp, softmax after
         numerical_input = self.listings_mlp(numerical_input)
-        numerical_input = f.relu(numerical_input)
+        # numerical_input = f.relu(numerical_input)
+        numerical_input = f.softmax(numerical_input)
         numerical_input = self.listings_mlp_second(numerical_input)
-        numerical_input = f.relu(numerical_input)
+        # numerical_input = f.relu(numerical_input)
+        numerical_input = f.softmax(numerical_input)
         
         #concat everything together
         numerical_input = torch.cat((numerical_input, bert_sentiment_reviews.unsqueeze(1)), axis=1) #need to unsqueeze bert_sentiment_reviews because its shape = batch_size, needs to be batch_size x 1 
