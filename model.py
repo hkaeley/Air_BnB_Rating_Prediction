@@ -181,6 +181,7 @@ class AirbnbSentimentModel(nn.Module):
         #pass everything through final mlp
         return f.relu(self.final_mlp(numerical_input)) #relu here because we need output to be between 0, 5
         # return f.softmax(self.final_mlp(numerical_input)) * 5.0 #relu here because we need output to be between 0, 5
+        #return torch.clamp(f.relu(self.final_mlp(numerical_input)), min=0, max=5)
 
 
 

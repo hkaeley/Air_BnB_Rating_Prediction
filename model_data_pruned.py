@@ -41,7 +41,7 @@ class AirbnbSentimentModel_Data_Pruned(nn.Module):
         else:
             ValueError("Tokenizer not supported")
 
-        self.listings_mlp = nn.Linear(in_features = listings_mlp_in, out_features = listings_mlp_hidden)
+        self.listings_mlp = nn.Linear(in_features = 9, out_features = listings_mlp_hidden)
         self.listings_mlp_second = nn.Linear(in_features = listings_mlp_hidden, out_features = listings_mlp_out)
 
         self.bert_ids_to_embeddings = nn.Embedding(self.vocab_file_size, bert_id_embedding_size) #vocab_file_size depends on the vocab file
