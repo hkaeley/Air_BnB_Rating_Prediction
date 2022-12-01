@@ -9,7 +9,7 @@ import torch.nn.functional as f
 class AirbnbSentimentModel(nn.Module):
     def __init__(self, tokenize = "Pretrained", pretrained_bert = "True", language = 'English', bert_hidden_size = 768, bert_num_hidden_layers = 12, bert_num_attention_heads = 12,
     listings_mlp_in = 14, listings_mlp_hidden = 8, listings_mlp_out = 1, cnn_kernel_size = 3, lstm_hidden = 32, lstm_layers = 2, bider = "True", device = None, bert_id_embedding_size = 1,
-    sentiment_pool_kernel_size = 2
+    sentiment_pool_kernel_size = 2, data_dim_count = 1000
     ):
         super(AirbnbSentimentModel, self).__init__()
         self.device = device
@@ -64,35 +64,40 @@ class AirbnbSentimentModel(nn.Module):
         # self.bathrooms_embeddings = nn.Linear(5, 1)
         # self.host_response_time_embeddings = nn.Linear(2, 1)
 
-        #100 count encodings sizes
-        # self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        # self.room_type_embeddings = nn.Linear(2, 1)
-        # self.bathrooms_embeddings = nn.Linear(10, 1)
-        # self.host_response_time_embeddings = nn.Linear(3, 1)
+        if data_dim_count == 100:
+            #100 count encodings sizes
+            self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+            self.room_type_embeddings = nn.Linear(2, 1)
+            self.bathrooms_embeddings = nn.Linear(10, 1)
+            self.host_response_time_embeddings = nn.Linear(3, 1)
 
-        #300 count encoding sizes
-        # self.property_type_embeddings = nn.Linear(19, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        # self.room_type_embeddings = nn.Linear(2, 1)
-        # self.bathrooms_embeddings = nn.Linear(11, 1)
-        # self.host_response_time_embeddings = nn.Linear(4, 1)
+        elif data_dim_count == 300:
+            #300 count encoding sizes
+            self.property_type_embeddings = nn.Linear(19, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+            self.room_type_embeddings = nn.Linear(2, 1)
+            self.bathrooms_embeddings = nn.Linear(11, 1)
+            self.host_response_time_embeddings = nn.Linear(4, 1)
 
-        #500 count encoding sizes
-        # self.property_type_embeddings = nn.Linear(24, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        # self.room_type_embeddings = nn.Linear(2, 1)
-        # self.bathrooms_embeddings = nn.Linear(14, 1)
-        # self.host_response_time_embeddings = nn.Linear(4, 1)
+        elif data_dim_count == 500:
+            #500 count encoding sizes
+            self.property_type_embeddings = nn.Linear(24, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+            self.room_type_embeddings = nn.Linear(2, 1)
+            self.bathrooms_embeddings = nn.Linear(14, 1)
+            self.host_response_time_embeddings = nn.Linear(4, 1)
 
-        #700 count encoding sizes
-        # self.property_type_embeddings = nn.Linear(26, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        # self.room_type_embeddings = nn.Linear(2, 1)
-        # self.bathrooms_embeddings = nn.Linear(15, 1)
-        # self.host_response_time_embeddings = nn.Linear(4, 1)
+        elif data_dim_count == 700:
+            #700 count encoding sizes
+            self.property_type_embeddings = nn.Linear(26, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+            self.room_type_embeddings = nn.Linear(2, 1)
+            self.bathrooms_embeddings = nn.Linear(15, 1)
+            self.host_response_time_embeddings = nn.Linear(4, 1)
 
-        #1000 count encodings sizes
-        self.property_type_embeddings = nn.Linear(33, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
-        self.room_type_embeddings = nn.Linear(3, 1)
-        self.bathrooms_embeddings = nn.Linear(18, 1)
-        self.host_response_time_embeddings = nn.Linear(4, 1)
+        elif data_dim_count == 1000:
+            #1000 count encodings sizes
+            self.property_type_embeddings = nn.Linear(33, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
+            self.room_type_embeddings = nn.Linear(3, 1)
+            self.bathrooms_embeddings = nn.Linear(18, 1)
+            self.host_response_time_embeddings = nn.Linear(4, 1)
 
 
         self.bert_sentiment_output = nn.Linear(self.bert.config.hidden_size, 1)

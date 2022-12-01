@@ -42,7 +42,7 @@ class Trainer():
             bert_hidden_size = self.args.bert_hidden_size, bert_num_hidden_layers = self.args.bert_num_hidden_layers, 
             bert_num_attention_heads = self.args.bert_num_attention_heads, listings_mlp_in = self.args.listings_mlp_in, listings_mlp_hidden = self.args.listings_mlp_hidden, 
             listings_mlp_out = self.args.listings_mlp_out, cnn_kernel_size = self.args.cnn_kernel_size, lstm_hidden = self.args.lstm_hidden, lstm_layers = self.args.lstm_layers, bider = self.args.bider,
-            device = self.args.device, sentiment_pool_kernel_size = self.args.sentiment_pool_kernel_size)
+            device = self.args.device, sentiment_pool_kernel_size = self.args.sentiment_pool_kernel_size, data_dim_count = self.args.data_dim_count)
         elif self.args.model == "AirbnbSentimentModelSimplified":
             self.model = AirbnbSentimentModelSimplified(tokenize = self.args.tokenize, pretrained_bert = self.args.pretrained_bert, language = self.args.language, 
             bert_hidden_size = self.args.bert_hidden_size, bert_num_hidden_layers = self.args.bert_num_hidden_layers, 
@@ -446,6 +446,7 @@ if __name__ == "__main__":
         ap.add_argument('--pretrained_bert', type=str, default = "True")
         ap.add_argument('--language', type=str, default = "English")
 
+        ap.add_argument('--data_dim_count', type=int, default = 1000)
         ap.add_argument('--bert_hidden_size', type=int, default = 768)
         ap.add_argument('--bert_num_hidden_layers', type=int, default = 12)
         ap.add_argument('--bert_num_attention_heads', type=int, default = 12)
