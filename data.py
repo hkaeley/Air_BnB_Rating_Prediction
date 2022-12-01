@@ -237,12 +237,12 @@ class Dataset():
 
 
     def save(self):
-        with open('dataset_100_count.pkl', 'wb') as f:
+        with open(self.args.data_save_path, 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 
     def load(self):
-        with open('dataset_100_count.pkl', 'rb') as f:
+        with open(self.args.data_load_path, 'rb') as f:
             print('Dataset loaded!')
             return pkl.load(f)
         
@@ -255,6 +255,8 @@ if __name__ == "__main__":
         ap.add_argument('--reviews_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
         ap.add_argument('--output_file', type=str, default="combined_data.csv", help="The path defining location of combined dataset for storage.")
         ap.add_argument('--combined_load_path', type=str, default="combined_data.csv", help="The path defining location of combined dataset for loading.")
+        ap.add_argument('--data_save_path', type=str, default="save_data.pkl", help="The path defining location to save data pkl.")
+        ap.add_argument('--data_load_path', type=str, default="save_data.pkl", help="The path defining location to load data pkl from.")
         ap.add_argument('--load_data', type=bool, default = False)
         ap.add_argument('--string_len_threshold', type=int, default = 10)
         ap.add_argument('--data_count', type=int, default = -1, help="Will stop dataset creation once amount of ids in dataset with reviews is equal to data_count")
@@ -270,7 +272,17 @@ if __name__ == "__main__":
         dp.save()
         dat = dp.load()
 
-#python data.py --data_count 10
+#python data.py --data_count 1000
+# python data.py --data_count 300 --data_save_path dataset_300_count.pkl --data_load_path dataset_300_count.pkl & python data.py --data_count 500 --data_save_path dataset_500_count.pkl --data_load_path dataset_500_count.pkl & python data.py --data_count 700 --data_save_path dataset_700_count.pkl --data_load_path dataset_700_count.pkl
+
+
 #python train.py --load_data True --log_wandb False
 
+#python train.py --load_data True --log_wandb True --model LSTM_Baseline --model_save_file lstm_350_baseline.pt --epochs 350
+
+#python train.py --load_data True --log_wandb False --model AirbnbSentimentModelSimplified --model_save_file simplified_model.pt --epochs 350
+
+#python train.py --load_data True --log_wandb False --model MLP_Baseline --model_save_file mlp_Baseline.pt
+
+# python train.py --load_data True --log_wandb True --model AirbnbSentimentModel_Data_Pruned --model_save_file simplified_pruned_model.pt --epochs 350 --listings_mlp_in 9
 

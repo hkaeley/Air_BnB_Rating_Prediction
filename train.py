@@ -436,6 +436,8 @@ if __name__ == "__main__":
         ap.add_argument('--string_len_threshold', type=int, default = 10)
         ap.add_argument('--load_data', type=str, default = "False")
         ap.add_argument('--min_reviews', type=int, default = 5, help="minimum amount of reviews acceptable")
+        ap.add_argument('--data_save_path', type=str, default="save_data.pkl", help="The path defining location to save data pkl.")
+        ap.add_argument('--data_load_path', type=str, default="save_data.pkl", help="The path defining location to load data pkl from.")
 
 
 
