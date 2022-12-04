@@ -1,5 +1,7 @@
 from unicodedata import bidirectional
 
+'''This file contains the implementation of our novel BERT/CNN-LSTM hybrid model. done using PyTorch'''
+
 from torch import INSERT_FOLD_PREPACK_OPS
 from transformers import AutoConfig, BertConfig, BertModel, BertTokenizer, BertTokenizerFast
 import torch.nn as nn
@@ -31,6 +33,7 @@ class AirbnbSentimentModel(nn.Module):
         else:
             self.bert_config = BertConfig(hidden_size = bert_hidden_size, num_hidden_layers = bert_num_hidden_layers, num_attention_heads = bert_num_attention_heads, use_auth_token=True)
             
+        #load bert from huggingface
         self.bert = BertModel(self.bert_config) #for now we are loading the pretrained bert model and fine tuning it
         if tokenize == "Fast":
             self.word_tokenizer = BertTokenizerFast(vocab_file  = vocab_file, use_auth_token=True)
@@ -44,6 +47,7 @@ class AirbnbSentimentModel(nn.Module):
         self.listings_mlp = nn.Linear(in_features = listings_mlp_in, out_features = listings_mlp_hidden)
         self.listings_mlp_second = nn.Linear(in_features = listings_mlp_hidden, out_features = listings_mlp_out)
 
+        #create cnn-lstm component
         self.bert_ids_to_embeddings = nn.Embedding(self.vocab_file_size, bert_id_embedding_size) #vocab_file_size depends on the vocab file
         self.sentiment_cnn = nn.Conv1d(in_channels = bert_id_embedding_size, out_channels = bert_id_embedding_size, kernel_size=cnn_kernel_size) #defaults to 3 because that's what the paper we references said was best for them
         self.sentiment_cnn_pool = nn.MaxPool1d(kernel_size=2) #based on the paper
@@ -64,6 +68,7 @@ class AirbnbSentimentModel(nn.Module):
         # self.bathrooms_embeddings = nn.Linear(5, 1)
         # self.host_response_time_embeddings = nn.Linear(2, 1)
 
+        #specify categorical data encodings size depending on dataset count (this was used for auc study at end of paper) 
         if data_dim_count == 100:
             #100 count encodings sizes
             self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
@@ -110,14 +115,13 @@ class AirbnbSentimentModel(nn.Module):
         # import pdb; pdb.set_trace()
         property_reviews = reviews
         property_description_text = description
-        #TODO: turn all sentiment stuff into nn.sequential module and create 2 sentiment modules: one for propery description & one for neighborhood description
         neighborhood_overview_text = neighborhood_overview
         property_type_one_hot = property_type_input
         room_type_one_hot = room_type_input
         bathrooms_one_hot = bathrooms_text_input
         host_reponse_time_one_hot = host_response_time_input
 
-
+        #translate one hot encoding into latent embeddings
         property_type_one_hot = self.property_type_embeddings(property_type_one_hot)
         room_type_one_hot = self.room_type_embeddings(room_type_one_hot)
         bathrooms_one_hot = self.bathrooms_embeddings(bathrooms_one_hot)
@@ -149,7 +153,6 @@ class AirbnbSentimentModel(nn.Module):
             cnn_lstm_intermediate_values = torch.tensor([]).to(self.device)
             #iterate through all reviews for given datapoint
 
-            #TODO: NEED TO FIND A MORE EFFICIENT WAY TO DO THIS CONSIDERING THAT LISTINGS CAN HAVE HUNDREDS OF REVIEWS....
             for text in list_of_text:
                 
                 text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids'].to(self.device)
@@ -160,7 +163,6 @@ class AirbnbSentimentModel(nn.Module):
                 reviews_bert_output = self.bert(text_embedding)[1] #this will give us bert's pooled hidden state values in the shape (batch_size, hidden_dim), for our pretrained bert the hidden_dim is 768
                 reviews_bert_output = f.tanh(self.bert_sentiment_output(reviews_bert_output)) #make sentiment score btwn -1, 1 range
 
-                # #TODO: NEED TO FIND OUT OTHER WAY TO ENCODE DATA FOR CNN-LSTM INPUT, 30,000 LENGTH ONE HOT ENCODING IS TOO INEFFICIENT [SOLVED] 
                 # property_description_cnn_lstm_output = f.one_hot(text_embedding, num_classes=self.vocab_file_size).float().permute(0,2,1).to(self.device) #get one hot encoding for each token id given the vocab size, shape = batch size x sequence len x vocab_size
                 #                                                                                                                                     #change input dims to fit what conv1d is expecting
 
@@ -187,13 +189,11 @@ class AirbnbSentimentModel(nn.Module):
             cnn_lstm_sentiment_reviews = torch.cat((cnn_lstm_sentiment_reviews, torch.mean(cnn_lstm_intermediate_values).unsqueeze(0).to(self.device)), axis=0) 
 
 
-        #pass listing data into mlp, softmax after
+        #pass non-text data through two later mlp
         numerical_input = self.listings_mlp(numerical_input)
-        # numerical_input = f.relu(numerical_input)
-        numerical_input = f.softmax(numerical_input)
+        numerical_input = f.relu(numerical_input)
         numerical_input = self.listings_mlp_second(numerical_input)
-        # numerical_input = f.relu(numerical_input)
-        numerical_input = f.softmax(numerical_input)
+        numerical_input = f.relu(numerical_input)
         
         #concat everything together
         numerical_input = torch.cat((numerical_input, bert_sentiment_reviews.unsqueeze(1)), axis=1) #need to unsqueeze bert_sentiment_reviews because its shape = batch_size, needs to be batch_size x 1 

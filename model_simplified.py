@@ -1,5 +1,7 @@
 from unicodedata import bidirectional
 
+'''This file contains the implementation of the model used in the ablation study mentioned in our paper. done using PyTorch'''
+
 from torch import INSERT_FOLD_PREPACK_OPS
 from transformers import AutoConfig, BertConfig, BertModel, BertTokenizer, BertTokenizerFast
 import torch.nn as nn
@@ -31,6 +33,7 @@ class AirbnbSentimentModelSimplified(nn.Module):
         else:
             self.bert_config = BertConfig(hidden_size = bert_hidden_size, num_hidden_layers = bert_num_hidden_layers, num_attention_heads = bert_num_attention_heads, use_auth_token=True)
             
+        #load bert from huggingface
         self.bert = BertModel(self.bert_config) #for now we are loading the pretrained bert model and fine tuning it
         if tokenize == "Fast":
             self.word_tokenizer = BertTokenizerFast(vocab_file  = vocab_file, use_auth_token=True)
@@ -58,7 +61,7 @@ class AirbnbSentimentModelSimplified(nn.Module):
         # self.bathrooms_embeddings = nn.Linear(10, 1)
         # self.host_response_time_embeddings = nn.Linear(3, 1)
 
-        #1000 count encodings sizes
+        #1000 count dataset categorical data encodings size
         self.property_type_embeddings = nn.Linear(33, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
         self.room_type_embeddings = nn.Linear(3, 1)
         self.bathrooms_embeddings = nn.Linear(18, 1)
@@ -73,14 +76,13 @@ class AirbnbSentimentModelSimplified(nn.Module):
         # import pdb; pdb.set_trace()
         property_reviews = reviews
         property_description_text = description
-        #TODO: turn all sentiment stuff into nn.sequential module and create 2 sentiment modules: one for propery description & one for neighborhood description
         neighborhood_overview_text = neighborhood_overview
         property_type_one_hot = property_type_input
         room_type_one_hot = room_type_input
         bathrooms_one_hot = bathrooms_text_input
         host_reponse_time_one_hot = host_response_time_input
 
-
+        #translate one hot encoding into latent embeddings
         property_type_one_hot = self.property_type_embeddings(property_type_one_hot)
         room_type_one_hot = self.room_type_embeddings(room_type_one_hot)
         bathrooms_one_hot = self.bathrooms_embeddings(bathrooms_one_hot)
@@ -106,7 +108,6 @@ class AirbnbSentimentModelSimplified(nn.Module):
             bert_intermediate_values = torch.tensor([]).to(self.device)
             #iterate through all reviews for given datapoint
 
-            #TODO: NEED TO FIND A MORE EFFICIENT WAY TO DO THIS CONSIDERING THAT LISTINGS CAN HAVE HUNDREDS OF REVIEWS....
             for text in list_of_text:
                 
                 text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids'].to(self.device)
@@ -117,7 +118,6 @@ class AirbnbSentimentModelSimplified(nn.Module):
                 reviews_bert_output = self.bert(text_embedding)[1] #this will give us bert's pooled hidden state values in the shape (batch_size, hidden_dim), for our pretrained bert the hidden_dim is 768
                 reviews_bert_output = f.tanh(self.bert_sentiment_output(reviews_bert_output)) #make sentiment score btwn -1, 1 range
 
-                # #TODO: NEED TO FIND OUT OTHER WAY TO ENCODE DATA FOR CNN-LSTM INPUT, 30,000 LENGTH ONE HOT ENCODING IS TOO INEFFICIENT [SOLVED] 
                 # property_description_cnn_lstm_output = f.one_hot(text_embedding, num_classes=self.vocab_file_size).float().permute(0,2,1).to(self.device) #get one hot encoding for each token id given the vocab size, shape = batch size x sequence len x vocab_size
                 #                                                                                                                                     #change input dims to fit what conv1d is expecting
 
@@ -126,11 +126,10 @@ class AirbnbSentimentModelSimplified(nn.Module):
             bert_sentiment_reviews = torch.cat((bert_sentiment_reviews, torch.mean(bert_intermediate_values).unsqueeze(0).to(self.device)), axis=0) 
 
 
-        #pass listing data into mlp, softmax after
         numerical_input = self.listings_mlp(numerical_input)
-        numerical_input = f.softmax(numerical_input)
+        numerical_input = f.relu(numerical_input)
         numerical_input = self.listings_mlp_second(numerical_input)
-        numerical_input = f.softmax(numerical_input)
+        numerical_input = f.relu(numerical_input)
         
         #concat everything together
         numerical_input = torch.cat((numerical_input, bert_sentiment_reviews.unsqueeze(1)), axis=1) #need to unsqueeze bert_sentiment_reviews because its shape = batch_size, needs to be batch_size x 1 

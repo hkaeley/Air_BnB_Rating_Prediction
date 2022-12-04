@@ -1,5 +1,7 @@
 from unicodedata import bidirectional
 
+'''This file contains our baseline LSTM implementation using PyTorch'''
+
 from torch import INSERT_FOLD_PREPACK_OPS
 from transformers import AutoConfig, BertConfig, BertModel, BertTokenizer, BertTokenizerFast
 import torch.nn as nn
@@ -55,7 +57,7 @@ class LSTM_Baseline(nn.Module):
         # self.bathrooms_embeddings = nn.Linear(5, 1)
         # self.host_response_time_embeddings = nn.Linear(2, 1)
 
-        #1000 count encodings sizes
+        #1000 count dataset categorical data encodings size
         self.property_type_embeddings = nn.Linear(13, 1) #we want output to be a 1 dim embedding, use linear instead of nn.embedding because our input is one hot encodings not integers
         self.room_type_embeddings = nn.Linear(2, 1)
         self.bathrooms_embeddings = nn.Linear(10, 1)
@@ -79,12 +81,13 @@ class LSTM_Baseline(nn.Module):
         host_reponse_time_one_hot = host_response_time_input
 
 
+        #translate one hot encoding into latent embeddings
         property_type_one_hot = self.property_type_embeddings(property_type_one_hot)
         room_type_one_hot = self.room_type_embeddings(room_type_one_hot)
         bathrooms_one_hot = self.bathrooms_embeddings(bathrooms_one_hot)
         host_reponse_time_one_hot = self.host_response_time_embeddings(host_reponse_time_one_hot)
 
-        #need to add embeddings back into the numerical data
+        #need to concat one hot encoding latent embeddings to the numerical data
         numerical_input = torch.cat((numerical_input, property_type_one_hot), axis=1)
         numerical_input = torch.cat((numerical_input, room_type_one_hot), axis=1)
         numerical_input = torch.cat((numerical_input, bathrooms_one_hot), axis=1)
@@ -105,10 +108,9 @@ class LSTM_Baseline(nn.Module):
             lstm_intermediate_values = torch.tensor([]).to(self.device)
             #iterate through all reviews for given datapoint
 
-            #TODO: NEED TO FIND A MORE EFFICIENT WAY TO DO THIS CONSIDERING THAT LISTINGS CAN HAVE HUNDREDS OF REVIEWS....
             for text in list_of_text:
                 
-                text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids'].to(self.device)
+                text_embedding = self.word_tokenizer(text, return_tensors='pt')['input_ids'].to(self.device) #tokenize the words
                 
 
                 #use embeddings insetad of one hot, channel length will be 1, get embeddings using the tokenized ids (each word corresponds to an id in the vocab, so we map each id to an embedding)
@@ -128,16 +130,15 @@ class LSTM_Baseline(nn.Module):
             lstm_sentiment_reviews = torch.cat((lstm_sentiment_reviews, torch.mean(lstm_intermediate_values).unsqueeze(0).to(self.device)), axis=0) 
 
 
-        #pass listing data into mlp, softmax after
-        numerical_input = self.listings_mlp(numerical_input)
-        numerical_input = f.softmax(numerical_input)
-        numerical_input = self.listings_mlp_second(numerical_input)
-        numerical_input = f.softmax(numerical_input)
-        
-        #concat everything together
-        numerical_input = torch.cat((numerical_input, lstm_sentiment_reviews.unsqueeze(1)), axis=1) 
 
-        #encoded_listing_output should now have the shape of batch size x 3
+        #pass non-text concat data into two layer mlp
+        numerical_input = self.listings_mlp(numerical_input)
+        numerical_input = f.relu(numerical_input)
+        numerical_input = self.listings_mlp_second(numerical_input)
+        numerical_input = f.relu(numerical_input)
+        
+        #concat sentiment scores with final non-text data latent embedding
+        numerical_input = torch.cat((numerical_input, lstm_sentiment_reviews.unsqueeze(1)), axis=1) 
 
         #pass everything through final mlp
         return f.relu(self.final_mlp(numerical_input)) #relu here because we need output to be between 0, 5

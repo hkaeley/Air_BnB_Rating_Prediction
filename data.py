@@ -1,3 +1,6 @@
+'''This file uses the Austin, Tx listing dataset [numerical & categorical features] & review dataset [text reviews] offered by http://insideairbnb.com/get-the-data to create a combined dataset that we use for model training.
+The two datsets must be installed locally so that this file can reference them, but the combined dataset is saved as a pkl file to promote modularity.'''
+
 import csv
 from numpy import genfromtxt
 from argparse import ArgumentParser
@@ -15,9 +18,6 @@ from sklearn.preprocessing import OneHotEncoder
 import pickle as pkl
 
 class Dataset():
-    #for now every 5 entires (representing 5 business days) will be one data point
-    #   therefore we should have 740 data points
-
     def __init__(self, args = None, normalize = False):
         self.args = args
         self.review_file_path = args.reviews_path
@@ -28,9 +28,7 @@ class Dataset():
 
 
     def extract_data(self):
-        # with open(self.listings_file_path, mode='r', encoding="utf8") as listings_file:
-        #     listings_reader = csv.reader(listings_file)
-        #     import pdb; pdb.set_trace()
+        #load the two raw datasets before combining
         listings_csv = pd.read_csv(self.listings_file_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
         listing_ids = listings_csv.values[1:,0]
         reviews_csv = pd.read_csv(self.review_file_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
@@ -39,10 +37,8 @@ class Dataset():
 
         for rev_id in tqdm(range(len(reviews_ids))):
             comment = str(reviews_csv.values[rev_id + 1][5]).strip().replace(r"<br>", '').replace(r"<br/>", '')
-            if detect(comment):
+            if detect(comment): #checks if comment is in english
                 rev_id_reviews[reviews_ids[rev_id]].append(comment)
-            #differing amount of spaces between sentences within each review
-            #incorrect spelling
         
 
         header = [i for i in listings_csv.values[0]] + [reviews_csv.values[0][5]]
@@ -64,7 +60,6 @@ class Dataset():
 
         print(count)
         print(review_counts)
-        # import pdb; pdb.set_trace() #review_counts["5456"]
                 
         new_file.close()
     
@@ -83,6 +78,8 @@ class Dataset():
 
 
     def type_check_data(self):
+        #converts categorical data to one hot encoding
+
         # to_int = lambda x: int(x)
         # to_int_vecotrize = np.vectorize(to_int)
         # self.data[:,[0,34,37,38,56,57,58]] = to_int_vecotrize(self.data[:,[0,34,37,38,56,57,58]])
@@ -156,21 +153,15 @@ class Dataset():
         # number_of_reviews_l30d
         # review_scores_value
         
-
-
-
-
-
-            
-
-
     def do_everything(self):
-        #string len 
- 
+        #this is the primary combined dataset creation function.
+
+        #we first load the two raw dataset's csv files
         listings_csv = pd.read_csv(self.listings_file_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
         for i in range(len(listings_csv.values[0,:])): 
             print(listings_csv.values[0,:][i], i)
         
+
         self.feature_index_list = [0, 6, 7, 15, 16, 26, 32, 33, 34, 36, 37, 38, 39, 40, 56, 57, 58, 67]
         listings_csv = listings_csv.dropna(subset=self.feature_index_list).reset_index(drop=True)
         listing_ids = listings_csv.values[1:,0].astype(np.int64) #some ids are strings
@@ -178,6 +169,7 @@ class Dataset():
         reviews_ids = reviews_csv.values[1:,0].astype(np.int64) #some ids are strings
         rev_id_reviews = defaultdict(list)
 
+        #cleaning reviews as some of them are scraped html code
         for rev_id in tqdm(range(len(reviews_ids))):
             if reviews_ids[rev_id] not in listing_ids: #if id of the review was filtered out of the listings
                 continue 
@@ -190,15 +182,15 @@ class Dataset():
             if self.args.data_count != -1 and len(rev_id_reviews) == self.args.data_count:
                 break #finish dataset creation once number of ids with at least one review in the dataset == data_count
 
-            #differing amount of spaces between sentences within each review
-            #incorrect spelling
-
+        #features we decided to use from both raw datasets
         self.feature_list = ['description', 'neighborhood_overview', 'host_response_time', 'host_response_rate', 'host_identity_verified', 'property_type', 'room_type', 'accommodates', 'bathrooms_text', 'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews', 'number_of_reviews_ltm', 'number_of_reviews_l30d', 'review_scores_value', 'comments']
 
         self.header = [i for i in listings_csv.values[0]] + [reviews_csv.values[0][5]]
         count = 0
         review_counts = {}
         self.data = {}
+        
+        #creating final dataset dictionary that contains listing & review data
         for listings_id in tqdm(range(len(listing_ids))):
             if listing_ids[listings_id] in rev_id_reviews: #and len(rev_id_reviews[listing_ids[listings_id]]) >= self.min_reviews: #technically this check not needed anymore since only ids left after listings filtering had their reviews extracted
                                                                 #commenting this out so tht points in our dataset have comments <= min_revs
@@ -222,9 +214,7 @@ class Dataset():
         print(count)        
                 
     def load_data(self):
-        # load_file = open(self.args.combined_load_path)
-        # reader = csv.reader(load_file)
-        # for data in 
+        #load dataset csv file specified during object creation
         self.data = {}
         file = pd.read_csv(self.args.combined_load_path, sep=',', encoding="ascii", encoding_errors="ignore", header=None, on_bad_lines='skip')
         header = file.values[0]
@@ -235,13 +225,14 @@ class Dataset():
             count += 1        
 
 
-
     def save(self):
+        #save dataset as a pkl to path specified duroing object creation
         with open(self.args.data_save_path, 'wb') as f:
             pkl.dump(self, f)
         print('Dataset saved!')
 
     def load(self):
+        #load dataset pkl to path specified duroing object creation
         with open(self.args.data_load_path, 'rb') as f:
             print('Dataset loaded!')
             return pkl.load(f)
@@ -250,6 +241,7 @@ class Dataset():
 
 
 if __name__ == "__main__":
+        #specify datset arguments
         ap = ArgumentParser(description='The parameters for creating dataset.')
         ap.add_argument('--listings_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/listings.csv", help="The path defining location of listings dataset.")
         ap.add_argument('--reviews_path', type=str, default=r"C:/Users/harsi/cs 175/airbnb_data/reviews.csv", help="The path defining location of reviews dataset.")
@@ -264,25 +256,6 @@ if __name__ == "__main__":
         args = ap.parse_args()
         dp = Dataset(args)
 
-        # if not args.load_data:
-        #     dp.extract_data()
-            
-        # dp.load_data() #load either way
-        dp.do_everything()
-        dp.save()
-        dat = dp.load()
-
-#python data.py --data_count 1000
-# python data.py --data_count 300 --data_save_path dataset_300_count.pkl --data_load_path dataset_300_count.pkl & python data.py --data_count 500 --data_save_path dataset_500_count.pkl --data_load_path dataset_500_count.pkl & python data.py --data_count 700 --data_save_path dataset_700_count.pkl --data_load_path dataset_700_count.pkl
-
-
-#python train.py --load_data True --log_wandb False
-
-#python train.py --load_data True --log_wandb True --model LSTM_Baseline --model_save_file lstm_350_baseline.pt --epochs 350
-
-#python train.py --load_data True --log_wandb False --model AirbnbSentimentModelSimplified --model_save_file simplified_model.pt --epochs 350
-
-#python train.py --load_data True --log_wandb False --model MLP_Baseline --model_save_file mlp_Baseline.pt
-
-# python train.py --load_data True --log_wandb True --model AirbnbSentimentModel_Data_Pruned --model_save_file simplified_pruned_model.pt --epochs 350 --listings_mlp_in 9
-
+        dp.do_everything() 
+        dp.save() #save dataset
+        dat = dp.load() #check if dataset can be loaded

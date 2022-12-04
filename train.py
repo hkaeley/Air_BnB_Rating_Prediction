@@ -71,7 +71,7 @@ class Trainer():
             raise ValueError("Model name not recognized")
         self.model = self.model.to(self.args.device)
 
-    #   Train loop code has been augmented from my (Harsimrat) personal project 
+    #   Train loop code
     #=============================================================
     def train(self):
         # if self.args.loss_func == "cross_entropy":
@@ -86,16 +86,14 @@ class Trainer():
             self.model.train() 
 
             for i in range(0, len(self.data.train_data_x), self.args.batch_size): # iterate through batches of the dataset
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad() #reset opitmizer
 
                 batch_index = i + self.args.batch_size if i + self.args.batch_size <= len(self.data.train_data_x) else len(self.data.train_data_x)
-                data = self.data.train_data_x[i:batch_index]
+                data = self.data.train_data_x[i:batch_index] #load training batch
 
                 numerical_features = ['host_response_rate', 'host_identity_verified', 'accommodates', 
                 'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews', 'number_of_reviews_ltm',
-                'number_of_reviews_l30d']
-                # text_features = ['description', 'neighborhood_overview']
-                # categorical_features = ['host_response_time', 'property_type', 'room_type', 'bathrooms_text']
+                'number_of_reviews_l30d'] #numerical features we use for every model that isn't our feature trimmed model
 
                 intermediate_data = []
                 for datum in data:
@@ -106,14 +104,14 @@ class Trainer():
                 if self.args.model != "AirbnbSentimentModel_Data_Pruned":
                     intermediate_data = []
                     for datum in data:
-                        intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in numerical_features])
+                        intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in numerical_features]) #pass in all numerical features specified above
                     numerical_input = np.array(intermediate_data)
-                else:
+                else: #if pruned model (takes in trimmed features)
                     pruned_numerical_features = ['accommodates', 
                     'bedrooms', 'beds', 'amenities', 'price', 'number_of_reviews']
                     intermediate_data = []
                     for datum in data:
-                        intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in pruned_numerical_features])
+                        intermediate_data.append([float(datum[numerical_feature]) for numerical_feature in pruned_numerical_features]) #pass in trimmed features
                     numerical_input = np.array(intermediate_data)
 
                 intermediate_data = []
@@ -150,6 +148,7 @@ class Trainer():
                     intermediate_data.append(datum['bathrooms_text'])
                 bathrooms_text_input = np.array(intermediate_data)
                 
+                #converting arrays to tensors and putting them on the correct device
                 label = self.data.train_data_y[i:batch_index]
                 numerical_input = torch.from_numpy(numerical_input).float().to(self.args.device)
                 host_response_time_input = torch.from_numpy(host_response_time_input).float().to(self.args.device) #must be int type tensors for nn.embeddings
@@ -160,7 +159,8 @@ class Trainer():
                 # description_input = torch.from_numpy(description_input).to(self.args.device)
                 # neighborhood_overview_input = torch.from_numpy(neighborhood_overview_input).to(self.args.device)
                 ground_truth = torch.from_numpy(np.array(label)).float().to(self.args.device).unsqueeze(1)
-                            
+                
+                #conduct loss calculation and backprop
                 if self.args.model == "AirbnbSentimentModel" or self.args.model == "LSTM_Baseline" or self.args.model == "MLP_Baseline" or self.args.model == "AirbnbSentimentModelSimplified" or self.args.model == "AirbnbSentimentModel_Data_Pruned":
                     output = self.model(numerical_input, review_input, description_input, neighborhood_overview_input, host_response_time_input, property_type_input, room_type_input, bathrooms_text_input) 
                     loss = self.loss_function(output, ground_truth) 
@@ -172,6 +172,7 @@ class Trainer():
                 torch.cuda.empty_cache()
         
 
+            #conduct inference on test dataset during every test step (ie every 5 epochs)
             if self.epoch_idx % int(self.args.test_step) == 0 or self.epoch_idx == int(self.args.epochs) - 1: #include last epoch as well
                 # del input
                 # del ground_truth
@@ -183,6 +184,8 @@ class Trainer():
         self.save_model(True) #save model once done training
 
     def inference(self, x_data, y_data): #use dataloaders here instead once implemented
+        #like the train loop but this passes data through without training the model (used for train and test metric calculation during every test step)
+
         y_pred = []
         y_true = []
 
@@ -287,6 +290,7 @@ class Trainer():
 
 
     def compute_roc_auc_score_batch(self, y_true, y_pred):
+        #calc auc score
         total = 0
         for b,l in zip(y_true, y_pred):
             b_score = self.compute_roc_auc_score(b, l)
@@ -316,6 +320,7 @@ class Trainer():
         return num_same_sign / num_pairs
 
     def compute_r2_score_batch(self, y_true, y_pred):
+        #calc r2 score
         total = 0
         for b,l in zip(y_true, y_pred):
             # import pdb; pdb.set_trace()
@@ -323,6 +328,8 @@ class Trainer():
         return total / len(y_true)
 
     def compute_loss(self, y_true, y_pred):
+        #calc aggregate loss across the entire batch 
+
         agg_loss = 0
         for gt, pred in zip(y_true, y_pred):
 
@@ -332,6 +339,7 @@ class Trainer():
         return agg_loss
 
     def metrics(self, y_true, y_pred, x_data):
+        #calc all metrics (auc, r2, avg batch loss)
 
         #compute agg loss
         agg_loss = self.compute_loss(y_true, y_pred)
@@ -342,7 +350,8 @@ class Trainer():
         return {'agg_loss': agg_loss, 'auc': auc, 'r2': self.compute_r2_score_batch(y_true, y_pred)}
 
 
-    #runs inference on training and testing sets and collects scores #only log to wanb during eval since thats only when u get a validation loss
+    #runs inference on training and testing sets and collects scores
+    #only need to log metrics to wandb during eval since thats only when u get a validation loss
     def evaluate(self):
         self.model.eval()
         if self.args.epochs == 0: #if just doing prediction
